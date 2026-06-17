@@ -321,11 +321,17 @@ npm start
 
 Open **[http://localhost:5050](http://localhost:5050)** in your browser. The Express server now handles both API routes (`/auth/*`, `/conflicts/*`) and serves the React SPA for all other paths.
 
----
-
 ## 🔌 API Documentation
 
+An importable Postman collection and pre-configured environment templates are available under the backend docs:
+* 📁 **Postman Collection:** [`backend/src/docs/postman_collection.json`](file:///c:/Users/rishi/OneDrive/Desktop/war_economic_impact_dataset_rishikesh_singh/backend/src/docs/postman_collection.json)
+* ⚙️ **Local Environment Setup:** [`backend/src/docs/war_economic_impact_local.postman_environment.json`](file:///c:/Users/rishi/OneDrive/Desktop/war_economic_impact_dataset_rishikesh_singh/backend/src/docs/war_economic_impact_local.postman_environment.json)
+* ⚙️ **Production Environment Setup:** [`backend/src/docs/war_economic_impact_prod.postman_environment.json`](file:///c:/Users/rishi/OneDrive/Desktop/war_economic_impact_dataset_rishikesh_singh/backend/src/docs/war_economic_impact_prod.postman_environment.json)
+
+For detailed step-by-step instructions on setting up environments, dynamic auth token workflows, payload requirements, and error responses, check the complete **[Postman API Guide](file:///c:/Users/rishi/OneDrive/Desktop/war_economic_impact_dataset_rishikesh_singh/backend/src/docs/POSTMAN.md)**.
+
 All API responses follow a standardised envelope format:
+
 
 **Success Response:**
 ```json
