@@ -1,7 +1,14 @@
 import axios from 'axios';
 
+// In production the Vite dev proxy is not available, so we read the
+// backend URL from the VITE_API_URL environment variable injected at
+// build time. Falls back to '' (same-origin) for local development
+// where the Vite proxy handles routing to localhost:5050.
+const BASE_URL = import.meta.env.VITE_API_URL || '';
+
 // Create a configured axios client instance
 const api = axios.create({
+  baseURL: BASE_URL,
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
