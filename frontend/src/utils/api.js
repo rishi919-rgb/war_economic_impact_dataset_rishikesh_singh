@@ -7,9 +7,11 @@ import axios from 'axios';
 const BASE_URL = import.meta.env.VITE_API_URL || '';
 
 // Create a configured axios client instance
+// Timeout is set to 65s to handle Render free-tier cold starts
+// which can take up to 50 seconds on first request after inactivity.
 const api = axios.create({
   baseURL: BASE_URL,
-  timeout: 10000,
+  timeout: 65000,
   headers: {
     'Content-Type': 'application/json',
   },
