@@ -18,23 +18,26 @@
 2. [Key Features](#-key-features)
 3. [Tech Stack](#-tech-stack)
 4. [Architecture & Project Structure](#️-architecture--project-structure)
-5. [Getting Started](#-getting-started)
+5. [Backend & Frontend Workflows](#-backend--frontend-workflows)
+   - [Backend Workflow](#backend-workflow)
+   - [Frontend Workflow](#frontend-workflow)
+6. [Getting Started](#-getting-started)
    - [Prerequisites](#prerequisites)
    - [Environment Variables](#environment-variables)
    - [Install Dependencies](#install-dependencies)
    - [Seed the Database](#seed-the-database)
-6. [Running the Application](#-running-the-application)
+7. [Running the Application](#-running-the-application)
    - [Development Mode](#development-mode)
    - [Production Mode](#production-mode)
-7. [API Documentation](#-api-documentation)
+8. [API Documentation](#-api-documentation)
    - [Authentication Endpoints](#authentication-endpoints)
    - [Conflict Registry CRUD](#conflict-registry-crud-endpoints)
    - [Analytics Aggregation](#analytics-aggregation-endpoints)
    - [Query Parameters](#query-parameters-get-conflicts)
-8. [Data Model](#-data-model)
-9. [Pull Request Workflow](#-pull-request-workflow)
-10. [Contributing](#-contributing)
-11. [License](#-license)
+9. [Data Model](#-data-model)
+10. [Pull Request Workflow](#-pull-request-workflow)
+11. [Contributing](#-contributing)
+12. [License](#-license)
 
 ---
 
@@ -178,6 +181,111 @@ war_economic_impact_dataset_rishikesh_singh/
 ├── .gitignore                       # Ignore node_modules, dist, .env files
 └── README.md                        # This file
 ```
+
+---
+
+## 🔄 Backend & Frontend Workflows
+
+The application coordinates data and visualizations across a clearly defined backend API lifecycle and frontend React state management framework.
+
+### Backend Workflow
+
+The Express backend manages the request lifecycle, auth guards, parameter parsing, data validations, service handlers, and centralized error logging.
+
+```mermaid
+graph TD
+    Client[Client Request] --> rateLimiter[Rate Limiter Middleware]
+    rateLimiter --> cors[CORS & Logger Middleware]
+    cors --> Router{Router Dispatcher}
+    Router -->|Public Read /stats| queryParser[Query Parser]
+    Router -->|Auth Protected Write| authProtect[JWT Authentication Guard]
+    authProtect --> bodyVal[Request Body Schema Validation]
+    bodyVal --> Controller[Controller Handler]
+    queryParser --> Controller
+    Controller --> Service[Service Layer]
+    Service --> Database[(MongoDB Mongoose)]
+    Database --> Service
+    Service --> Controller
+    Controller --> Response[Standardized JSON Envelope Response]
+    errors[Errors] --> errorHandler[Centralized Error Handler]
+    errorHandler --> Response
+```
+
+1. **Global Request Pipeline**:
+   - **Rate Limiting**: Every incoming HTTP request is intercepted by custom, in-memory rate limiting middleware (`rateLimit.middleware.js`) to block client IPs exceeding defined counts (15 req/min on auth, 30 req/min on search, 60 req/min on general routes).
+   - **CORS & Morgan**: Access policies are configured via `cors`, and details are logged via the custom request logger middleware.
+   - **Static Bundles**: Static directories are served for compiled frontend React code built inside `frontend/dist`.
+
+2. **Routing & Guards**:
+   - The central router `routes/index.js` splits namespaces: `/auth`, `/conflicts`, `/health`, and `/version`.
+   - **JWT Authentication Guard (`protect`)**: For protected writing routes (e.g. `POST`, `PUT`, `PATCH`, `DELETE`), the request passes through the verification guard. It verifies the client's `Authorization: Bearer <token>` header, decodes the JWT using the `JWT_SECRET`, retrieves the user record from MongoDB, and attaches it to `req.user`.
+   - **RBAC Guard (`authorize`)**: For administrative routes like `DELETE /conflicts/:id`, the route guard ensures `req.user.role` is exactly `'admin'`, throwing a `403 Forbidden` if missing permissions.
+
+3. **Data Verification**:
+   - Write requests pass the payload through `validateBody` schema middleware (`validators/`).
+   - If schema conditions are violated (such as missing mandatory fields or negative values for financial metrics), the middleware stops execution and forwards a structured validation failure `ApiError` to the error handler.
+
+4. **Service & Aggregation Processing**:
+   - For `GET /conflicts`, the controller calls `queryParser.js` to map URL options (`?keyword=...`, `?sort=...`, `?region=...`) into valid MongoDB queries with sorting and paginated limit/skip values.
+   - For stats routes, controllers invoke `conflict.service.js` which executes complex aggregation pipelines (`$group`, `$sort`, `$project`) to return processed totals, averages, regional distributions, and case-study extremes.
+
+5. **Centralized Error Handling**:
+   - All routing errors are caught by `asyncHandler` wrappers.
+   - `error.middleware.js` standardizes response shapes, printing trace dumps in development or serving clean JSON error packets to the client in production.
+
+---
+
+### Frontend Workflow
+
+The React 19 single-page application manages responsive visual states, user authentications, chart components, filter queries, and modal mutations.
+
+```mermaid
+graph TD
+    UserApp[User interacts with React SPA] --> AuthState{Auth Session Present?}
+    AuthState -->|Yes| AxiosMe[Axios fetch /auth/me]
+    AxiosMe --> Profile[Hydrate User State & Profile]
+    AuthState -->|No| Login[Show Login/Register UI]
+    Profile --> Navigation{View Selection}
+    Navigation -->|Dashboard| FetchDashboard[Concurrent Promise.all stats fetch]
+    FetchDashboard --> Recharts[Render Recharts Bar & Line SVG Charts]
+    Navigation -->|Explorer| FetchExplorer[Paginated GET /conflicts]
+    FetchExplorer --> FilterGrid[Render Filtered & Sorted Datagrid Table]
+    FilterGrid --> EditCreate[Trigger Create/Edit Modal Form]
+    EditCreate --> AxiosSubmit[Axios POST/PATCH Request]
+    AxiosSubmit --> Success[Success: Close Modal & Trigger explorerRefreshKey increment]
+    Success --> FetchExplorer
+```
+
+1. **Root Configuration & Context**:
+   - `main.jsx` mounts the `<App />` component.
+   - The application is wrapped in an `AuthProvider` (`AuthContext.jsx`) which reads cached login keys from `localStorage`.
+   - If a JWT is found, Axios executes `GET /auth/me` to fetch details, populating the user context (`name`, `role`, `email`).
+
+2. **Navbar & API Connection Checks**:
+   - The `Navbar.jsx` component runs a background poll (every 30s) querying the backend health endpoint `/health`.
+   - It displays a visual online/offline connection indicator badge.
+
+3. **Dashboard & Analytics Chart Rendering**:
+   - The `Dashboard.jsx` component concurrently fetches stats from 7 discrete aggregate/extreme endpoints via `Promise.all`.
+   - Fetched datasets populate state variables, driving visual graphics built with **Recharts**:
+     - A custom `BarChart` detailing Direct Military Costs by Region.
+     - A custom `LineChart` showing average and peak inflation trends.
+     - Metric cards highlighting case extremes (highest cost, GDP contraction, etc.).
+
+4. **Explorer Datagrid & Query Filters**:
+   - `ConflictExplorer.jsx` displays a searchable, paginated table of logged records.
+   - Filters (e.g., search keywords, region selection, status, and custom sorts) are stored as local component states.
+   - A reactive `useEffect` hook fires whenever filters or pages change, sending request queries to `GET /conflicts` and updating grid rows.
+
+5. **Axios client Interceptors**:
+   - All communication is routed through a configured Axios instance `utils/api.js`.
+   - **Request Interceptor**: Automatically appends the Bearer token to the `Authorization` header on all outbound requests.
+   - **Response Interceptor**: Validates incoming responses. If a `401 Unauthorized` token expiry occurs, it clears local credentials and resets the authentication state.
+
+6. **Mutations & View Syncing**:
+   - Editing or creating conflict entries triggers `ConflictModal.jsx`.
+   - Saving submits payloads to the backend API (`POST` for new entries or `PATCH` for partial edits).
+   - Upon a successful save, `onSuccess` triggers the increment of an `explorerRefreshKey` state key in `App.jsx`. This forces active dashboard/explorer visual panels to re-fetch and render the latest database state automatically.
 
 ---
 
