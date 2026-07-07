@@ -64,3 +64,18 @@ export const getMe = asyncHandler(async (req, res) => {
     req.user
   ).send(res);
 });
+
+/**
+ * @desc      Updates active session profile details
+ * @route     PUT /auth/update
+ * @access    Private
+ */
+export const updateProfile = asyncHandler(async (req, res) => {
+  const result = await authService.updateUserProfile(req.user._id, req.body);
+  
+  return new ApiResponse(
+    HTTP_STATUS.OK,
+    'User profile updated successfully.',
+    result
+  ).send(res);
+});

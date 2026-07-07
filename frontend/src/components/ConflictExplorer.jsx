@@ -12,10 +12,11 @@ import {
   TrendingDown,
   TrendingUp,
   AlertTriangle,
-  RotateCcw
+  RotateCcw,
+  Star
 } from 'lucide-react';
 
-const ConflictExplorer = ({ onEditConflict, onCreateConflict }) => {
+const ConflictExplorer = ({ onEditConflict, onCreateConflict, settings }) => {
   const { user } = useAuth();
   
   // 1. Core query state
@@ -34,7 +35,70 @@ const ConflictExplorer = ({ onEditConflict, onCreateConflict }) => {
   const [region, setRegion] = useState('');
   const [status, setStatus] = useState('');
   const [minInflation, setMinInflation] = useState('');
-  const [sort, setSort] = useState('-startYear');
+  const [sort, setSort] = useState(settings?.defaultSort || '-startYear');
+
+  // Watchlist State
+  const [watchlist, setWatchlist] = useState([]);
+
+  // Sync sorting setting changes
+  useEffect(() => {
+    if (settings?.defaultSort) {
+      setSort(settings.defaultSort);
+    }
+  }, [settings?.defaultSort]);
+
+  // Load watchlist on user change or load
+  useEffect(() => {
+    if (user) {
+      const stored = localStorage.getItem(`watchlist_${user._id}`);
+      if (stored) {
+        setWatchlist(JSON.parse(stored));
+      }
+    }
+  }, [user]);
+
+  const isWatchlisted = (id) => watchlist.some(item => item._id === id);
+
+  const handleToggleWatchlist = (conflict) => {
+    if (!user) {
+      alert("Please sign in to bookmark items in your watchlist.");
+      return;
+    }
+    let updated;
+    const key = `watchlist_${user._id}`;
+    if (isWatchlisted(conflict._id)) {
+      updated = watchlist.filter(item => item._id !== conflict._id);
+      logActivity(`Removed "${conflict.conflictName}" from watchlist`);
+    } else {
+      const summary = {
+        _id: conflict._id,
+        conflictName: conflict.conflictName,
+        region: conflict.region,
+        warCostUsd: conflict.warCostUsd,
+        inflationRate: conflict.inflationRate,
+        gdpChange: conflict.gdpChange,
+        primaryCountry: conflict.primaryCountry
+      };
+      updated = [...watchlist, summary];
+      logActivity(`Added "${conflict.conflictName}" to watchlist`);
+    }
+    setWatchlist(updated);
+    localStorage.setItem(key, JSON.stringify(updated));
+  };
+
+  const logActivity = (action) => {
+    if (!user) return;
+    try {
+      const storedLogs = localStorage.getItem(`logs_${user._id}`);
+      const logs = storedLogs ? JSON.parse(storedLogs) : [];
+      const time = new Date().toLocaleTimeString();
+      const newLog = { timestamp: time, action, type: 'watchlist' };
+      const updated = [newLog, ...logs].slice(0, 50);
+      localStorage.setItem(`logs_${user._id}`, JSON.stringify(updated));
+    } catch (e) {
+      console.warn("Failed to log activity in explorer", e);
+    }
+  };
 
   // Trigger data fetch when query criteria changes
   useEffect(() => {
@@ -259,64 +323,85 @@ const ConflictExplorer = ({ onEditConflict, onCreateConflict }) => {
           <table>
             <thead>
               <tr>
-                <th>Conflict Details</th>
-                <th>Region</th>
-                <th>Duration</th>
-                <th>Status</th>
-                <th>Inflation</th>
-                <th>GDP Impact</th>
-                <th>War Cost (USD)</th>
-                {user && <th style={{ textAlign: 'right' }}>Actions</th>}
+                {user && <th style={{ width: '40px', ...(settings?.compact ? { padding: '6px 12px' } : {}) }}></th>}
+                <th style={settings?.compact ? { padding: '6px 12px', fontSize: '0.85rem' } : {}}>Conflict Details</th>
+                <th style={settings?.compact ? { padding: '6px 12px', fontSize: '0.85rem' } : {}}>Region</th>
+                <th style={settings?.compact ? { padding: '6px 12px', fontSize: '0.85rem' } : {}}>Duration</th>
+                <th style={settings?.compact ? { padding: '6px 12px', fontSize: '0.85rem' } : {}}>Status</th>
+                <th style={settings?.compact ? { padding: '6px 12px', fontSize: '0.85rem' } : {}}>Inflation</th>
+                <th style={settings?.compact ? { padding: '6px 12px', fontSize: '0.85rem' } : {}}>GDP Impact</th>
+                <th style={settings?.compact ? { padding: '6px 12px', fontSize: '0.85rem' } : {}}>War Cost (USD)</th>
+                {user && <th style={{ textAlign: 'right', ...(settings?.compact ? { padding: '6px 12px', fontSize: '0.85rem' } : {}) }}>Actions</th>}
               </tr>
             </thead>
             <tbody>
               {conflicts.map((item) => (
                 <tr key={item._id} className="animate-fade-in">
-                  <td>
+                  {user && (
+                    <td style={settings?.compact ? { padding: '6px 12px' } : {}}>
+                      <button
+                        onClick={() => handleToggleWatchlist(item)}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          cursor: 'pointer',
+                          color: isWatchlisted(item._id) ? 'var(--accent)' : 'var(--text-muted)',
+                          padding: '2px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          transition: 'var(--transition-fast)'
+                        }}
+                        title={isWatchlisted(item._id) ? "Remove from Watchlist" : "Add to Watchlist"}
+                      >
+                        <Star size={15} fill={isWatchlisted(item._id) ? 'var(--accent)' : 'transparent'} />
+                      </button>
+                    </td>
+                  )}
+                  <td style={settings?.compact ? { padding: '6px 12px', fontSize: '0.85rem' } : {}}>
                     <div style={{ fontWeight: '600', color: 'white' }}>{item.conflictName}</div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{item.primaryCountry}</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{item.primaryCountry}</div>
                   </td>
-                  <td>{item.region}</td>
-                  <td>
+                  <td style={settings?.compact ? { padding: '6px 12px', fontSize: '0.85rem' } : {}}>{item.region}</td>
+                  <td style={settings?.compact ? { padding: '6px 12px', fontSize: '0.85rem' } : {}}>
                     {item.startYear} – {item.endYear || 'Present'}
                   </td>
-                  <td>
-                    <span className={`badge ${item.status === 'Ongoing' ? 'badge-danger' : 'badge-success'}`}>
+                  <td style={settings?.compact ? { padding: '6px 12px', fontSize: '0.85rem' } : {}}>
+                    <span className={`badge ${item.status === 'Ongoing' ? 'badge-danger' : 'badge-success'}`} style={settings?.compact ? { fontSize: '0.6rem', padding: '1px 6px' } : {}}>
                       {item.status}
                     </span>
                   </td>
-                  <td>
+                  <td style={settings?.compact ? { padding: '6px 12px', fontSize: '0.85rem' } : {}}>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: item.inflationRate >= 15 ? 'var(--danger)' : 'var(--text-primary)' }}>
-                      {item.inflationRate >= 15 ? <TrendingUp size={14} /> : null}
+                      {item.inflationRate >= 15 ? <TrendingUp size={12} /> : null}
                       {item.inflationRate}%
                     </span>
                   </td>
-                  <td>
+                  <td style={settings?.compact ? { padding: '6px 12px', fontSize: '0.85rem' } : {}}>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: item.gdpChange < 0 ? 'var(--danger)' : 'var(--success)' }}>
-                      {item.gdpChange < 0 ? <TrendingDown size={14} /> : <TrendingUp size={14} />}
+                      {item.gdpChange < 0 ? <TrendingDown size={12} /> : <TrendingUp size={12} />}
                       {item.gdpChange}%
                     </span>
                   </td>
-                  <td>{formatCost(item.warCostUsd)}</td>
+                  <td style={settings?.compact ? { padding: '6px 12px', fontSize: '0.85rem' } : {}}>{formatCost(item.warCostUsd)}</td>
                   {user && (
-                    <td style={{ textAlign: 'right' }}>
+                    <td style={{ textAlign: 'right', ...(settings?.compact ? { padding: '6px 12px', fontSize: '0.85rem' } : {}) }}>
                       <div style={{ display: 'inline-flex', gap: '6px' }}>
                         <button
                           onClick={() => onEditConflict(item)}
                           className="btn btn-secondary"
-                          style={{ padding: '6px', borderRadius: '6px' }}
+                          style={{ padding: settings?.compact ? '4px' : '6px', borderRadius: '6px' }}
                           title="Edit Record"
                         >
-                          <Edit2 size={14} />
+                          <Edit2 size={12} />
                         </button>
                         {user.role === 'admin' && (
                           <button
                             onClick={() => handleDelete(item._id, item.conflictName)}
                             className="btn btn-danger"
-                            style={{ padding: '6px', borderRadius: '6px' }}
+                            style={{ padding: settings?.compact ? '4px' : '6px', borderRadius: '6px' }}
                             title="Delete Record"
                           >
-                            <Trash2 size={14} />
+                            <Trash2 size={12} />
                           </button>
                         )}
                       </div>
