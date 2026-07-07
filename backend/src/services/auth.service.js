@@ -86,9 +86,67 @@ export const loginUser = async (email, password) => {
   };
 
   const token = generateToken(user._id);
-
-  return {
-    user: userResponse,
-    token,
-  };
-};
+ 
+   return {
+     user: userResponse,
+     token,
+   };
+ };
+ 
+ /**
+  * Update user details (name, email, password, role)
+  * 
+  * @param {string} userId - User ID to update
+  * @param {object} updateData - Data to update
+  * @returns {Promise<object>} Updated user response and token
+  */
+ export const updateUserProfile = async (userId, updateData) => {
+   const { name, email, password, role } = updateData;
+ 
+   const user = await User.findById(userId).select('+password');
+   if (!user) {
+     throw new ApiError(404, 'User not found.');
+   }
+ 
+   if (email && email.toLowerCase() !== user.email.toLowerCase()) {
+     const existingUser = await User.findOne({ email });
+     if (existingUser) {
+       throw new ApiError(400, 'An account is already registered with this email address.');
+     }
+     user.email = email;
+   }
+ 
+   if (name) {
+     user.name = name;
+   }
+ 
+   if (role) {
+     user.role = role;
+   }
+ 
+   if (password) {
+     if (password.length < 6) {
+       throw new ApiError(400, 'Password must be at least 6 characters long.');
+     }
+     user.password = password;
+   }
+ 
+   await user.save();
+ 
+   // Create clean user response
+   const userResponse = {
+     _id: user._id,
+     name: user.name,
+     email: user.email,
+     role: user.role,
+     createdAt: user.createdAt,
+     updatedAt: user.updatedAt
+   };
+ 
+   const token = generateToken(user._id);
+ 
+   return {
+     user: userResponse,
+     token,
+   };
+ };

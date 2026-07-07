@@ -23,9 +23,23 @@ const Navbar = ({ currentView, onViewChange, onAuthTrigger }) => {
     };
 
     checkHealth();
-    const interval = setInterval(checkHealth, 30000); // Re-check health every 30s
+
+    let checkInterval = 30000;
+    if (user) {
+      try {
+        const savedSettings = localStorage.getItem(`settings_${user._id}`);
+        if (savedSettings) {
+          const parsed = JSON.parse(savedSettings);
+          if (parsed.interval) checkInterval = parsed.interval * 1000;
+        }
+      } catch (e) {
+        console.warn('Could not parse user settings in navbar', e);
+      }
+    }
+
+    const interval = setInterval(checkHealth, checkInterval);
     return () => clearInterval(interval);
-  }, []);
+  }, [user]);
 
   return (
     <nav className="glass-panel" style={{
@@ -70,6 +84,16 @@ const Navbar = ({ currentView, onViewChange, onAuthTrigger }) => {
           <Database size={16} />
           Explorer
         </button>
+        {user && (
+          <button
+            onClick={() => onViewChange('profile')}
+            className={`btn ${currentView === 'profile' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{ padding: '8px 16px', fontSize: '0.85rem' }}
+          >
+            <User size={16} />
+            Profile
+          </button>
+        )}
       </div>
 
       {/* Right controls: health status and auth */}
@@ -86,9 +110,13 @@ const Navbar = ({ currentView, onViewChange, onAuthTrigger }) => {
         {/* User profile controls */}
         {user ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem' }}>
+            <div 
+              onClick={() => onViewChange('profile')}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', cursor: 'pointer' }}
+              title="View Profile Settings"
+            >
               <User size={16} style={{ color: 'var(--secondary)' }} />
-              <span style={{ fontWeight: '500' }}>{user.name}</span>
+              <span style={{ fontWeight: '500', textDecoration: currentView === 'profile' ? 'underline' : 'none' }}>{user.name}</span>
               <span className="badge badge-info" style={{ fontSize: '0.6rem', padding: '1px 6px' }}>{user.role}</span>
             </div>
             <button

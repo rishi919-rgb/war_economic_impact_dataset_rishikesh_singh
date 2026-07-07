@@ -24,7 +24,8 @@ import {
   ArrowDownRight
 } from 'lucide-react';
 
-const Dashboard = () => {
+const Dashboard = ({ settings }) => {
+  const cardClass = settings?.glow ? 'glass-panel-glow' : 'glass-panel';
   const [overview, setOverview] = useState(null);
   const [costByRegion, setCostByRegion] = useState([]);
   const [inflationByRegion, setInflationByRegion] = useState([]);
@@ -127,7 +128,7 @@ const Dashboard = () => {
           gap: '20px'
         }}>
           {/* Card 1: Total Cost of Conflicts */}
-          <div className="glass-panel-glow" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div className={cardClass} style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: '600', textTransform: 'uppercase' }}>Total War Cost</span>
               <DollarSign size={20} style={{ color: 'var(--primary)' }} />
@@ -137,7 +138,7 @@ const Dashboard = () => {
           </div>
 
           {/* Card 2: Avg Inflation Rate */}
-          <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div className={cardClass} style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: '600', textTransform: 'uppercase' }}>Avg Inflation Rate</span>
               <TrendingUp size={20} style={{ color: 'var(--secondary)' }} />
@@ -147,7 +148,7 @@ const Dashboard = () => {
           </div>
 
           {/* Card 3: Avg GDP Contraction */}
-          <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div className={cardClass} style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: '600', textTransform: 'uppercase' }}>Avg GDP Change</span>
               <ArrowDownRight size={20} style={{ color: 'var(--danger)' }} />
@@ -159,7 +160,7 @@ const Dashboard = () => {
           </div>
 
           {/* Card 4: Total conflicts and status */}
-          <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div className={cardClass} style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: '600', textTransform: 'uppercase' }}>Total Datapoints</span>
               <Globe size={20} style={{ color: 'var(--accent)' }} />
