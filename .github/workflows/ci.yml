@@ -1,0 +1,27 @@
+name: CI Suite
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+      - name: Run Inline Tests
+        run: |
+          node -e "
+          const { calculateTotal } = require('./backend/src/payments.js');
+          console.log('Testing calculateTotal...');
+          if (calculateTotal(100, 10) !== 90) {
+            console.error('AssertionError: expected 91 to equal 90');
+            process.exit(1);
+          }
+          console.log('All tests passed!');
+          "
